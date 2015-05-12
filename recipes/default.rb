@@ -1,18 +1,14 @@
 require 'chef/provisioning/aws_driver'
 
-with_driver 'aws::eu-west-1'
+with_driver 'aws::us-west-1'
 
 #
 # This recipe sets every single value of every single object
 #
 
-aws_vpc 'test_vpc' do
-  action :purge
-end
-
-aws_vpc 'ref-vpc' do
-  action :purge
-end
+# aws_vpc 'ref-vpc' do
+#   action :purge
+# end
 
 aws_dhcp_options 'ref-dhcp-options' do
   domain_name          'example.com'
@@ -41,24 +37,22 @@ aws_vpc 'ref-vpc' do
   main_route_table 'ref-main-route-table'
 end
 
-
 aws_key_pair 'ref-key-pair' do
   private_key_options({
-    :format => :der,
-    :type => :dsa
+    :format => :pem,
+    :type => :rsa,
+    :regenerate_if_different => true
   })
   allow_overwrite true
 end
-
 
 aws_security_group 'ref-sg1' do
   vpc 'ref-vpc'
   inbound_rules '0.0.0.0/0' => [ 22, 80 ]
   outbound_rules [
-    {:ports => 22..22, :protocol => :tcp, :destinations => ['0.0.0.0/0'] }
+    {:port => 22..22, :protocol => :tcp, :destinations => ['0.0.0.0/0'] }
   ]
 end
-
 
 aws_route_table 'ref-public' do
   vpc 'ref-vpc'
@@ -68,7 +62,7 @@ end
 aws_subnet 'ref-subnet' do
   vpc 'ref-vpc'
   cidr_block '10.0.0.0/24'
-  availability_zone 'eu-west-1a'
+  availability_zone 'us-west-1a'
   map_public_ip_on_launch true
   route_table 'ref-public'
 end
@@ -82,18 +76,28 @@ machine_image 'ref-machine_image2' do
 end
 
 machine_image 'ref-machine_image3' do
-  machine_options bootstrap_options: { subnet_id: 'ref-subnet', security_group_ids: 'ref-sg1', image_id: 'ref-machine_image1' }
+  machine_options bootstrap_options: {
+    # for some reason, sshing into this host takes 20+ seconds with these enabled
+    #subnet_id: 'ref-subnet',
+    #security_group_ids: 'ref-sg1',
+    image_id: 'ref-machine_image1',
+    instance_type: 't2.small'
+  }
 end
 
 machine_batch do
   machine 'ref-machine1' do
-    machine_options bootstrap_options: { image_id: 'ref-machine_image1', :availability_zone => 'eu-west-1a', instance_type: 'm3.medium' }
+    machine_options bootstrap_options: { image_id: 'ref-machine_image1', :availability_zone => 'us-west-1a', instance_type: 'm3.medium' }
     ohai_hints 'ec2' => { 'a' => 'b' }
     converge false
   end
   machine 'ref-machine2' do
     from_image 'ref-machine_image1'
-    machine_options bootstrap_options: { key_name: 'ref-key-pair', subnet_id: 'ref-subnet', security_group_ids: 'ref-sg1' }
+    machine_options bootstrap_options: {
+      key_name: 'ref-key-pair',
+      #subnet_id: 'ref-subnet',
+      #security_group_ids: 'ref-sg1'
+    }
   end
 end
 
@@ -108,7 +112,7 @@ aws_launch_configuration 'ref-launch-configuration' do
 end
 
 aws_auto_scaling_group 'ref-auto-scaling-group' do
-  availability_zones ['eu-west-1a']
+  availability_zones ['us-west-1a']
   desired_capacity 2
   min_size 1
   max_size 3
@@ -119,7 +123,7 @@ end
 
 aws_ebs_volume 'ref-volume' do
   machine 'ref-machine1'
-  availability_zone 'eu-west-1a'
+  availability_zone 'a'
   size 100
   #snapshot
   iops 3000

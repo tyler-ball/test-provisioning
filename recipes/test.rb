@@ -1,17 +1,19 @@
 require 'chef/provisioning/aws_driver'
-require 'retryable'
 
 with_driver 'aws::eu-west-1'
 
-# TODO we should accept either strings or symbols
-aws_ebs_volume 'tag-test1' do
-  tags { :first => :value }
+aws_vpc 'ref-vpc' do
+  cidr_block '10.0.0.0/24'
 end
 
-aws_ebs_volume 'tag-test2' do
-  tags { 'Name' => 'tag-test22' }
+aws_network_acl "first_test" do
+  vpc 'ref-vpc'
 end
 
-aws_eip_address 'test-eip' do
-  tags { 'Name' => 'tag-test22' }
+aws_network_acl "first_test" do
+  action :destroy
+end
+
+aws_vpc 'ref-vpc' do
+  action :destroy
 end
