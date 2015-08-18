@@ -1,6 +1,6 @@
 require 'chef/provisioning/aws_driver'
 
-with_driver 'aws::us-west-1'
+with_driver 'aws::us-east-1'
 
 aws_sqs_queue 'ref-sqs-queue' do
   action :destroy

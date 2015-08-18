@@ -1,6 +1,6 @@
 require 'chef/provisioning/aws_driver'
 
-with_driver 'aws::us-west-1'
+with_driver 'aws::us-east-1'
 
 #
 # This recipe sets every single value of every single object
@@ -16,6 +16,7 @@ aws_dhcp_options 'ref-dhcp-options' do
   ntp_servers          %w(8.8.8.8 8.8.4.4)
   netbios_name_servers %w(8.8.8.8 8.8.4.4)
   netbios_node_type    2
+  aws_tags :chef_type => "aws_dhcp_options"
 end
 
 aws_vpc 'ref-vpc' do
@@ -26,11 +27,13 @@ aws_vpc 'ref-vpc' do
   dhcp_options 'ref-dhcp-options'
   enable_dns_support true
   enable_dns_hostnames true
+  aws_tags :chef_type => "aws_vpc"
 end
 
 aws_route_table 'ref-main-route-table' do
   vpc 'ref-vpc'
   routes '0.0.0.0/0' => :internet_gateway
+  aws_tags :chef_type => "aws_route_table"
 end
 
 aws_vpc 'ref-vpc' do
@@ -52,21 +55,41 @@ aws_security_group 'ref-sg1' do
   outbound_rules [
     {:port => 22..22, :protocol => :tcp, :destinations => ['0.0.0.0/0'] }
   ]
+  aws_tags :chef_type => "aws_security_group"
 end
 
 aws_route_table 'ref-public' do
   vpc 'ref-vpc'
   routes '0.0.0.0/0' => :internet_gateway
+  aws_tags :chef_type => "aws_route_table"
+end
+
+aws_network_acl 'ref-acl' do
+  vpc 'ref-vpc'
+  inbound_rules(
+    [
+      { rule_number: 100, action: :allow, protocol: -1, cidr_block: '0.0.0.0/0' },
+      { rule_number: 200, action: :allow, protocol: 6, port_range: 443..443, cidr_block: '172.31.0.0/24' }
+    ]
+  )
+  outbound_rules(
+    [
+      { rule_number: 100, action: :allow, protocol: -1, cidr_block: '0.0.0.0/0' }
+    ]
+  )
 end
 
 aws_subnet 'ref-subnet' do
   vpc 'ref-vpc'
   cidr_block '10.0.0.0/24'
-  availability_zone 'us-west-1a'
+  availability_zone 'us-east-1a'
   map_public_ip_on_launch true
   route_table 'ref-public'
+  aws_tags :chef_type => "aws_subnet"
+  network_acl 'ref-acl'
 end
 
+# We cover tagging the base chef-provisioning resources in aws_tags.rb
 machine_image 'ref-machine_image1' do
   image_options description: 'some image description'
 end
@@ -87,7 +110,7 @@ end
 
 machine_batch do
   machine 'ref-machine1' do
-    machine_options bootstrap_options: { image_id: 'ref-machine_image1', :availability_zone => 'us-west-1a', instance_type: 'm3.medium' }
+    machine_options bootstrap_options: { image_id: 'ref-machine_image1', :availability_zone => 'us-east-1a', instance_type: 'm3.medium' }
     ohai_hints 'ec2' => { 'a' => 'b' }
     converge false
   end
@@ -103,6 +126,13 @@ end
 
 load_balancer 'ref-load-balancer' do
   machines [ 'ref-machine2' ]
+  load_balancer_options(
+    attributes: {
+      cross_zone_load_balancing: {
+        enabled: true
+      }
+    }
+  )
 end
 
 aws_launch_configuration 'ref-launch-configuration' do
@@ -112,7 +142,7 @@ aws_launch_configuration 'ref-launch-configuration' do
 end
 
 aws_auto_scaling_group 'ref-auto-scaling-group' do
-  availability_zones ['us-west-1a']
+  availability_zones ['us-east-1a']
   desired_capacity 2
   min_size 1
   max_size 3
@@ -130,11 +160,13 @@ aws_ebs_volume 'ref-volume' do
   volume_type 'io1'
   encrypted true
   device '/dev/sda2'
+  aws_tags :chef_type => "aws_ebs_volume"
 end
 
 aws_eip_address 'ref-elastic-ip' do
   machine 'ref-machine1'
   associate_to_vpc true
+  # guh - every other AWSResourceWithEntry accepts tags EXCEPT this one
 end
 
 aws_s3_bucket 'ref-s3-bucket' do

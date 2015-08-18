@@ -14,3 +14,10 @@ bin/*
 
 .kitchen/
 .kitchen.local.yml
+
+clients
+data_bags
+nodes
+
+.chef/local-mode-cache
+.chef/vms

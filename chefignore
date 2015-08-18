@@ -93,3 +93,10 @@ Vagrantfile
 # Travis #
 ##########
 .travis.yml
+
+# Provisioning #
+################
+clients
+data_bags
+nodes
+.chef
