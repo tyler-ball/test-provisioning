@@ -10,7 +10,7 @@ name "test-provisioning"
 default_source :community
 
 # run_list: chef-client will run these recipes in the order specified.
-run_list "test-provisioning::demo"
+run_list "test-provisioning::windows"
 
 # Specify a custom source for a single cookbook:
 cookbook "test-provisioning", path: "."

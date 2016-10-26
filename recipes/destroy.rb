@@ -1,6 +1,18 @@
 require 'chef/provisioning/aws_driver'
 
-with_driver 'aws::us-east-1'
+with_driver 'aws:tester:us-east-1'
+
+aws_cloudsearch_domain "ref-cs-domain" do
+  action :destroy
+end
+
+aws_rds_instance "ref-rds-instance" do
+  action :destroy
+end
+
+aws_rds_subnet_group "ref-db-subnet-group" do
+  action :destroy
+end
 
 aws_sqs_queue 'ref-sqs-queue' do
   action :destroy
@@ -55,6 +67,10 @@ aws_subnet 'ref-subnet' do
   action :destroy
 end
 
+aws_subnet 'ref-subnet-2' do
+  action :destroy
+end
+
 aws_route_table 'ref-public' do
   action :destroy
 end
@@ -79,7 +95,8 @@ end
 # and finally delete the VPC (which deletes the main route table)
 aws_vpc 'ref-vpc' do
   main_route_table lazy {
-    self.aws_object.route_tables.select {|r| !r.main?}.first
+    rt = self.aws_object.route_tables.select {|r| !r.main?}.first
+    rt.id if rt
   }
   only_if { !self.aws_object.nil? }
 end
@@ -93,5 +110,9 @@ aws_vpc 'ref-vpc' do
 end
 
 aws_dhcp_options 'ref-dhcp-options' do
+  action :destroy
+end
+
+aws_server_certificate "ref-server-certificate" do
   action :destroy
 end

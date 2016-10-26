@@ -21,3 +21,5 @@ nodes
 
 .chef/local-mode-cache
 .chef/vms
+
+Policyfile.lock.json
